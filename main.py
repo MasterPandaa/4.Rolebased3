@@ -1,9 +1,10 @@
-import sys
 import math
 import random
-import pygame
+import sys
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
+import pygame
 
 # =============================
 # TETRIS CONFIGURATION CONSTANTS
@@ -17,26 +18,39 @@ FPS = 60
 
 # Gravity speeds (in seconds per row) per level, roughly following NES pace but simplified
 LEVEL_SPEEDS = [
-    0.80, 0.72, 0.63, 0.55, 0.47, 0.38, 0.30, 0.22, 0.13, 0.10,
-    0.09, 0.08, 0.07, 0.06, 0.05
+    0.80,
+    0.72,
+    0.63,
+    0.55,
+    0.47,
+    0.38,
+    0.30,
+    0.22,
+    0.13,
+    0.10,
+    0.09,
+    0.08,
+    0.07,
+    0.06,
+    0.05,
 ]
 
 # Colors
-BLACK   = (10, 10, 12)
-GRAY    = (40, 40, 46)
-LIGHT   = (200, 200, 208)
-WHITE   = (240, 240, 248)
-BORDER  = (70, 70, 78)
-GHOST   = (180, 180, 190)
+BLACK = (10, 10, 12)
+GRAY = (40, 40, 46)
+LIGHT = (200, 200, 208)
+WHITE = (240, 240, 248)
+BORDER = (70, 70, 78)
+GHOST = (180, 180, 190)
 
 COLORS = {
-    'I': (0, 240, 240),   # Cyan
-    'J': (0, 0, 240),     # Blue
-    'L': (240, 160, 0),   # Orange
-    'O': (240, 240, 0),   # Yellow
-    'S': (0, 240, 0),     # Green
-    'T': (160, 0, 240),   # Purple
-    'Z': (240, 0, 0),     # Red
+    "I": (0, 240, 240),  # Cyan
+    "J": (0, 0, 240),  # Blue
+    "L": (240, 160, 0),  # Orange
+    "O": (240, 240, 0),  # Yellow
+    "S": (0, 240, 0),  # Green
+    "T": (160, 0, 240),  # Purple
+    "Z": (240, 0, 0),  # Red
 }
 
 # Tetromino rotation states (0..3) with 4x4 matrices
@@ -45,53 +59,55 @@ TETROMINO_SHAPES: Dict[str, List[List[Tuple[int, int]]]] = {}
 
 # Helper to construct shape from 4x4 strings into cell coordinate lists per rotation
 
+
 def shape_from_grid(grid: List[str]) -> List[Tuple[int, int]]:
     coords = []
     for y, row in enumerate(grid):
         for x, ch in enumerate(row):
-            if ch == 'X':
+            if ch == "X":
                 coords.append((x, y))
     return coords
 
+
 # Base definitions for rotation state 0 (within a 4x4 box)
 SHAPE_DEFS = {
-    'I': [
+    "I": [
         "....",
         "XXXX",
         "....",
         "....",
     ],
-    'J': [
+    "J": [
         "X..",
         "XXX",
         "...",
         "...",
     ],
-    'L': [
+    "L": [
         "..X",
         "XXX",
         "...",
         "...",
     ],
-    'O': [
+    "O": [
         ".XX.",
         ".XX.",
         "....",
         "....",
     ],
-    'S': [
+    "S": [
         ".XX",
         "XX.",
         "...",
         "...",
     ],
-    'T': [
+    "T": [
         ".X.",
         "XXX",
         "...",
         "...",
     ],
-    'Z': [
+    "Z": [
         "XX.",
         ".XX",
         "...",
@@ -117,9 +133,7 @@ for name, grid in SHAPE_DEFS.items():
 
 # Super simple wall-kick data (not full SRS), but good enough for robust play
 # Order of kicks to try when rotating CW or CCW
-WALL_KICKS = [
-    (0, 0), (1, 0), (-1, 0), (0, -1), (2, 0), (-2, 0)
-]
+WALL_KICKS = [(0, 0), (1, 0), (-1, 0), (0, -1), (2, 0), (-2, 0)]
 
 
 @dataclass
@@ -135,9 +149,11 @@ class Piece:
 
     def cells(self, rot: Optional[int] = None) -> List[Tuple[int, int]]:
         r = self.rotation if rot is None else rot % 4
-        return [(self.x + cx, self.y + cy) for (cx, cy) in TETROMINO_SHAPES[self.kind][r]]
+        return [
+            (self.x + cx, self.y + cy) for (cx, cy) in TETROMINO_SHAPES[self.kind][r]
+        ]
 
-    def rotated(self, dr: int) -> 'Piece':
+    def rotated(self, dr: int) -> "Piece":
         return Piece(self.kind, self.x, self.y, (self.rotation + dr) % 4)
 
 
@@ -182,7 +198,7 @@ class Board:
         spawn_y = 0
         piece = Piece(kind, spawn_x, spawn_y, 0)
         # Small vertical tweak for some pieces to start slightly above
-        if kind == 'I':
+        if kind == "I":
             piece.y = -1
         if not self._valid(piece):
             self.game_over = True
@@ -209,7 +225,7 @@ class Board:
         return 0 <= x < self.cols and y < self.rows
 
     def _valid(self, piece: Piece) -> bool:
-        for (x, y) in piece.cells():
+        for x, y in piece.cells():
             if y < 0:
                 # allow spawn above visible board
                 if not (0 <= x < self.cols):
@@ -222,7 +238,12 @@ class Board:
     def try_move(self, dx: int, dy: int) -> bool:
         if not self.current:
             return False
-        moved = Piece(self.current.kind, self.current.x + dx, self.current.y + dy, self.current.rotation)
+        moved = Piece(
+            self.current.kind,
+            self.current.x + dx,
+            self.current.y + dy,
+            self.current.rotation,
+        )
         if self._valid(moved):
             self.current = moved
             return True
@@ -233,8 +254,10 @@ class Board:
             return False
         rotated = self.current.rotated(dr)
         # Try wall kicks
-        for (kx, ky) in WALL_KICKS:
-            candidate = Piece(rotated.kind, rotated.x + kx, rotated.y + ky, rotated.rotation)
+        for kx, ky in WALL_KICKS:
+            candidate = Piece(
+                rotated.kind, rotated.x + kx, rotated.y + ky, rotated.rotation
+            )
             if self._valid(candidate):
                 self.current = candidate
                 return True
@@ -245,7 +268,9 @@ class Board:
         if not self.current:
             return 0
         dist = 0
-        tmp = Piece(self.current.kind, self.current.x, self.current.y, self.current.rotation)
+        tmp = Piece(
+            self.current.kind, self.current.x, self.current.y, self.current.rotation
+        )
         while True:
             nxt = Piece(tmp.kind, tmp.x, tmp.y + 1, tmp.rotation)
             if self._valid(nxt):
@@ -259,7 +284,12 @@ class Board:
         if not self.current:
             return
         drop = self.hard_drop_distance()
-        self.current = Piece(self.current.kind, self.current.x, self.current.y + drop, self.current.rotation)
+        self.current = Piece(
+            self.current.kind,
+            self.current.x,
+            self.current.y + drop,
+            self.current.rotation,
+        )
         self.lock_piece()
         # reward instant drop
         self.score += 2 * drop
@@ -273,7 +303,7 @@ class Board:
     def lock_piece(self):
         if not self.current:
             return
-        for (x, y) in self.current.cells():
+        for x, y in self.current.cells():
             if y < 0:
                 # Locked above board -> game over
                 self.game_over = True
@@ -346,12 +376,12 @@ class Game:
                     self.draw_cell(x, y, color)
         # Ghost piece
         if self.board.current:
-            for (x, y) in self.board.ghost_cells():
+            for x, y in self.board.ghost_cells():
                 if y >= 0:
                     self.draw_cell(x, y, GHOST, alpha=100)
         # Current piece
         if self.board.current:
-            for (x, y) in self.board.current.cells():
+            for x, y in self.board.current.cells():
                 if y >= 0:
                     self.draw_cell(x, y, self.board.current.color)
 
@@ -417,7 +447,9 @@ class Game:
 
     def draw_preview_piece(self, kind: str, x: int, y: int):
         # Draw on a small 4x3 area
-        preview_surface = pygame.Surface((4 * CELL_SIZE, 3 * CELL_SIZE), pygame.SRCALPHA)
+        preview_surface = pygame.Surface(
+            (4 * CELL_SIZE, 3 * CELL_SIZE), pygame.SRCALPHA
+        )
         preview_surface.fill((0, 0, 0, 0))
         color = COLORS[kind]
         # Place piece centered in preview
@@ -426,11 +458,11 @@ class Game:
         max_x = max(cx for cx, _ in cells)
         min_y = min(cy for _, cy in cells)
         max_y = max(cy for _, cy in cells)
-        width = (max_x - min_x + 1)
-        height = (max_y - min_y + 1)
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
         offset_x = (4 - width) // 2 - min_x
         offset_y = (3 - height) // 2 - min_y
-        for (cx, cy) in cells:
+        for cx, cy in cells:
             rx = (cx + offset_x) * CELL_SIZE
             ry = (cy + offset_y) * CELL_SIZE
             rect = pygame.Rect(rx, ry, CELL_SIZE, CELL_SIZE)
@@ -477,7 +509,7 @@ class Game:
     def _repeat_move(self, dx: int):
         # Minimalist key repeat using time mod; avoids storing extra timers
         # This provides a gentle continuous move if key held
-        if not hasattr(self, '_move_accum'):
+        if not hasattr(self, "_move_accum"):
             self._move_accum = 0.0
         self._move_accum += self.clock.get_time() / 1000.0
         # Move every ~0.10s when key held
@@ -520,7 +552,9 @@ class Game:
             pygame.display.flip()
 
     def draw_game_over(self):
-        overlay = pygame.Surface((COLUMNS * CELL_SIZE, ROWS * CELL_SIZE), pygame.SRCALPHA)
+        overlay = pygame.Surface(
+            (COLUMNS * CELL_SIZE, ROWS * CELL_SIZE), pygame.SRCALPHA
+        )
         overlay.fill((20, 20, 24, 170))
         self.screen.blit(overlay, (0, 0))
         msg = self.font_big.render("GAME OVER", True, WHITE)
